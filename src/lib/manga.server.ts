@@ -188,9 +188,9 @@ export async function buildCharacterBible(script: string): Promise<string> {
   try {
     const out = await textChat(system, `FULL SCRIPT:\n${body}`, {
       temperature: 0.4,
-      maxOutputTokens: 2_000,
-      timeoutMs: 40_000,
-      attempts: 1,
+      maxOutputTokens: 4_000,
+      timeoutMs: 180_000,
+      attempts: 2,
     });
     const bible = stripFences(out).slice(0, 4000);
     if (bible.length > 20) return bible;
