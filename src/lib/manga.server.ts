@@ -1172,14 +1172,14 @@ function contentRefusal(message: string): boolean {
 
 
 /**
- * Renders one panel and REFUSES to come back empty.
+ * Renders one panel with the FULL prompt.
  *
- * Ladder: the prompt as written is tried twice (each try already walks the whole
- * image-key pool on a fresh seed). If both rounds fail, the prompt itself is
- * progressively rewritten — shortened, softened, then reduced to a plain
- * description of the script line — until an image comes back. Every timestamp
- * therefore ends up with a picture in any condition.
+ * A failure is simply retried with the same complete prompt on a fresh seed and
+ * the next image key. The prompt is never shortened or replaced by a stub; the
+ * only rewrite is a softened version of the same full scene, and only when the
+ * renderer refused the wording on content grounds.
  */
+
 export async function renderPanel(
   written: string,
   seed: number,
