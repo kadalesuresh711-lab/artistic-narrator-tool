@@ -101,9 +101,9 @@ export const renderBatch = createServerFn({ method: "POST" })
     const results = await Promise.all(
       data.jobs.map(async (job) => {
         try {
-          // renderPanel never gives up quietly: the written prompt is tried
-          // twice across the whole key pool, then progressively rewritten
-          // (shortened, softened, plain) until an image comes back.
+          // renderPanel retries the FULL prompt across the whole key pool on
+          // fresh seeds; it is never shortened, only softened on a refusal.
+
           const { url, prompt, rewritten } = await renderPanel(
             job.prompt,
             job.seed,
