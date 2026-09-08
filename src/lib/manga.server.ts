@@ -189,7 +189,7 @@ export async function buildCharacterBible(script: string): Promise<string> {
     const out = await textChat(system, `FULL SCRIPT:\n${body}`, {
       temperature: 0.4,
       maxOutputTokens: 2_000,
-      timeoutMs: 75_000,
+      timeoutMs: 50_000,
       attempts: 2,
     });
     const bible = stripFences(out).slice(0, 4000);
@@ -304,8 +304,7 @@ const CONTEXT_AFTER = 200;
 
 /** Numbers the WHOLE script, 1-based, exactly as the model must answer it. */
 function numberScript(all: Segment[]): string {
-  const text = all.map((s, i) => `${i + 1}. [${s.start}s-${s.end}s] ${s.text}`).join("\n");
-  return text.length <= MAX_SCRIPT_CHARS ? text : text.slice(0, MAX_SCRIPT_CHARS);
+  return all.map((s, i) => `${i + 1}. [${s.start}s-${s.end}s] ${s.text}`).join("\n");
 }
 
 function numberRange(all: Segment[], from: number, to: number): string {
@@ -372,7 +371,7 @@ export async function writePrompts(
       {
         temperature: temp,
         maxOutputTokens: Math.min(4_000, 500 + want.length * 140),
-        timeoutMs: 75_000,
+        timeoutMs: 50_000,
         attempts: 2,
       },
     );
