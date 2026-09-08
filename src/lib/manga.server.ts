@@ -1223,36 +1223,41 @@ export async function renderPanel(
     }
   }
 
-  // Rounds 0-1: exactly the prompt that was verified for this line.
-  for (let round = 0; round < 2; round++) {
+  // The prompt as written for this line, retried in full on fresh seeds.
+  let refused = false;
+  for (let round = 0; round < 4; round++) {
     tries++;
     try {
       const url = await generateImage(prompt, seed + round * 1861, slot + round, bible, 3);
       return { url, prompt, level: 0, tries, rewritten };
     } catch (e) {
-      errors.push(`round ${round + 1}: ${e instanceof Error ? e.message : String(e)}`);
+      const msg = e instanceof Error ? e.message : String(e);
+      errors.push(`round ${round + 1}: ${msg}`);
+      if (contentRefusal(msg)) refused = true;
     }
     await new Promise((r) => setTimeout(r, 600 * (round + 1)));
   }
 
-  // Rounds 2+: modified prompts, each level simpler and safer than the last.
-  // Every level is derived from the VERIFIED prompt, so a simplification can
-  // never reintroduce another timestamp's scene.
-  for (let level = 1; level <= 5; level++) {
-    const variant = promptVariant(prompt, level, line);
-    if (!variant || variant.length < 20) continue;
-
-    tries++;
-    try {
-      const url = await generateImage(variant, seed + level * 5471, slot + level, bible, 3);
-      return { url, prompt: variant, level, tries, rewritten };
-    } catch (e) {
-      errors.push(`level ${level}: ${e instanceof Error ? e.message : String(e)}`);
+  // Only a content refusal earns a rewrite, and only softening — same scene,
+  // same length, refused wording replaced.
+  if (refused) {
+    const softened = promptVariant(prompt, 1, line);
+    if (softened && softened !== prompt) {
+      for (let round = 0; round < 2; round++) {
+        tries++;
+        try {
+          const url = await generateImage(softened, seed + 5471 + round * 977, slot + round, bible, 3);
+          return { url, prompt: softened, level: 1, tries, rewritten };
+        } catch (e) {
+          errors.push(`softened ${round + 1}: ${e instanceof Error ? e.message : String(e)}`);
+        }
+        await new Promise((r) => setTimeout(r, 700 * (round + 1)));
+      }
     }
-    await new Promise((r) => setTimeout(r, 700 * level));
   }
 
   throw new Error(`Image generation failed after ${tries} tries — ${errors.slice(-2).join(" | ")}`);
+
 }
 
 /* ------------------------------------------------------------------ */
