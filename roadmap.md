@@ -59,3 +59,10 @@
 - [ ] Blocked: tabitoken shows "0 models enabled" for this account, so the model
       id cannot be confirmed. Default is `claude-opus-5`; override with the
       TABITOKEN_MODEL secret once the account lists the model.
+
+## Cloned into this project (2026-09-08, narrative-weaver-claude)
+- [x] Repo cloned and running here; 4 Pixazo image keys + Agnes AI key stored as secrets (never in code)
+- [x] Picture service verified 200 (image returned) and writing service verified 200 on agnes-2.5-flash
+- [x] Fallback ladder removed: a failed panel is retried with the FULL prompt on a
+      fresh seed/key; the prompt is only softened (never shortened, never a stub)
+      and only when the renderer refuses the content
