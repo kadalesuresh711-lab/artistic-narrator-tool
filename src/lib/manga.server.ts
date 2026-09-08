@@ -1135,68 +1135,41 @@ export async function generateImage(
 /* ------------------------------------------------------------------ */
 
 /**
- * Progressive prompt rewrites used when a panel keeps failing.
+ * The ONLY permitted prompt rewrite: softening.
  *
- * Level 0 is the prompt as written. Higher levels strip whatever most often
- * makes a render fail (over-long text, exotic wording, quoted fragments,
- * violent/adult nouns the free tier refuses) while keeping the actual subject
- * of the line, and the last level is a short, plain description that the
- * renderer practically always accepts.
+ * A failed render is never shortened, truncated or reduced to a stub — that
+ * produced generic, off-script panels. The full scene description is always
+ * kept; the only rewrite replaces wording the free renderer refuses, and it is
+ * applied only when the failure itself was a content refusal.
  */
-export function promptVariant(prompt: string, level: number, line?: string): string {
+export function promptVariant(prompt: string, level: number, _line?: string): string {
   const base = sanitizePrompt(prompt);
   if (level <= 0) return base;
 
-  // 1 — shorten: keep the first sentences (subject, action, setting) only.
-  if (level === 1) {
-    const parts = base.split(/(?<=[.!?])\s+/).filter(Boolean);
-    return parts
-      .slice(0, Math.max(2, Math.ceil(parts.length / 2)))
-      .join(" ")
-      .slice(0, 600);
-  }
-
-  // 2 — soften: replace wording the free renderer commonly refuses, and drop
-  // decorative clauses in brackets.
-  if (level === 2) {
-    const soft: [RegExp, string][] = [
-      [
-        /\b(blood|bloody|bleeding|gore|gory|mutilated|dismembered|corpse|corpses|dead bodies?|severed)\b/gi,
-        "aftermath",
-      ],
-      [
-        /\b(kill(s|ing|ed)?|murder(s|ing|ed)?|slaughter(s|ing|ed)?|massacre(s|d)?|stab(s|bing|bed)?|torture(s|d)?)\b/gi,
-        "attack",
-      ],
-      [/\b(naked|nude|nudity|topless|lingerie|seductive|sensual|erotic)\b/gi, "fully clothed"],
-      [/\b(child|children|kid|kids|toddler|infant|baby)\b/gi, "young person"],
-      [/\([^)]*\)/g, " "],
-    ];
-    let out = base;
-    for (const [re, to] of soft) out = out.replace(re, to);
-    return out
-      .replace(/\s{2,}/g, " ")
-      .trim()
-      .slice(0, 500);
-  }
-
-  // 3 — plain: one short English sentence built from the subject words.
-  if (level === 3) {
-    const head = base.split(/(?<=[.!?])\s+/)[0] ?? base;
-    return `A detailed illustration of this exact moment: ${head}`.slice(0, 320);
-  }
-
-  // 4+ — last resort: a short neutral description. The script line itself is
-  // only usable when it is English — the image engine cannot read Hindi, and
-  // feeding it Devanagari drew scenes unrelated to the story.
-  const src = line && isEnglishish(line) ? line : base;
-  const raw = src
-    .replace(/["“”'’]/g, " ")
-    .replace(/\s{2,}/g, " ")
-    .trim()
-    .slice(0, 200);
-  return `A detailed scene with a fully drawn background and clear natural lighting, showing: ${raw}`;
+  const soft: [RegExp, string][] = [
+    [
+      /\b(blood|bloody|bleeding|gore|gory|mutilated|dismembered|corpse|corpses|dead bodies?|severed)\b/gi,
+      "aftermath",
+    ],
+    [
+      /\b(kill(s|ing|ed)?|murder(s|ing|ed)?|slaughter(s|ing|ed)?|massacre(s|d)?|stab(s|bing|bed)?|torture(s|d)?)\b/gi,
+      "attack",
+    ],
+    [/\b(naked|nude|nudity|topless|lingerie|seductive|sensual|erotic)\b/gi, "fully clothed"],
+    [/\b(child|children|kid|kids|toddler|infant|baby)\b/gi, "young person"],
+  ];
+  let out = base;
+  for (const [re, to] of soft) out = out.replace(re, to);
+  return out.replace(/\s{2,}/g, " ").trim();
 }
+
+/** True when the renderer refused the wording rather than simply failing. */
+function contentRefusal(message: string): boolean {
+  return /nsfw|safety|moderat|blocked|prohibit|forbidden|policy|inappropriate|not allowed|flagged|400|422/i.test(
+    message,
+  );
+}
+
 
 /**
  * Renders one panel and REFUSES to come back empty.
