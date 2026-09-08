@@ -52,11 +52,12 @@ const SAMPLE = `(0:00)Henan की कहानी असुरा का उद
  * Script lines written per prompt pass.
  *
  * The model reads the ENTIRE script on every pass and writes this many prompts
- * at a time. Published server requests cannot forward the provider's streaming
- * bytes to the browser, so bounded ranges avoid an apparently idle request being
- * cut off while a very large answer is still being written.
+ * at a time. Large passes are intentional: writing many neighbouring lines in a
+ * single answer keeps characters, place names and wording consistent across the
+ * panels. Server calls therefore allow long, high-output requests instead of
+ * splitting work into small batches.
  */
-const PROMPT_RANGE = 12;
+const PROMPT_RANGE = 60;
 
 /**
  * Parallel image request lanes. Each lane sends IMAGE_BATCH prompts in one
