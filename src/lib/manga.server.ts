@@ -189,8 +189,8 @@ export async function buildCharacterBible(script: string): Promise<string> {
     const out = await textChat(system, `FULL SCRIPT:\n${body}`, {
       temperature: 0.4,
       maxOutputTokens: 2_000,
-      timeoutMs: 50_000,
-      attempts: 2,
+      timeoutMs: 40_000,
+      attempts: 1,
     });
     const bible = stripFences(out).slice(0, 4000);
     if (bible.length > 20) return bible;
@@ -371,8 +371,8 @@ export async function writePrompts(
       {
         temperature: temp,
         maxOutputTokens: Math.min(4_000, 500 + want.length * 140),
-        timeoutMs: 50_000,
-        attempts: 2,
+        timeoutMs: 40_000,
+        attempts: 1,
       },
     );
   };
@@ -471,32 +471,10 @@ export async function writePrompts(
       continue;
     }
 
-    // No usable prompt for this line yet. NEVER borrow a neighbour's prompt —
-    // that is exactly how a far-away timestamp's scene appeared on this panel.
-    // Ask the model for a prompt built from THIS ONE line only (it also
-    // handles Hindi/Hinglish, which the image engine cannot read).
-    let solo = "";
-    try {
-      solo = (
-        await textChat(
-          "You turn ONE script line into ONE English image prompt for exactly that moment. " +
-            "Translate the line if it is not English. Output only the prompt: one paragraph, " +
-            "55-80 English words, its place, its people, its action, concrete environment details, " +
-            "camera angle and natural lighting. No text, signs, speech bubbles, numbering or art-style talk.",
-          `CHARACTER BIBLE:\n${bible || "(none)"}\n\nSCRIPT LINE ${n} [${seg.start}s-${seg.end}s]:\n${seg.text}`,
-          { temperature: 0.4, maxOutputTokens: 700, attempts: 2 },
-        )
-      ).trim();
-    } catch (e) {
-      console.error(
-        `writePrompts solo repair failed for line ${n}:`,
-        e instanceof Error ? e.message : e,
-      );
-    }
-    if (solo.length > 60) {
-      built.push(sanitizePrompt(solo));
-      continue;
-    }
+    // No usable prompt for this line yet. NEVER launch a series of extra model
+    // calls inside this server request: on the published site that can outlive
+    // the request even though Agnes itself is streaming. Keep the slot empty so
+    // the browser's repair sweep retries this line in its own resumable call.
     if (isEnglishish(seg.text)) {
       built.push(sanitizePrompt(fallbackPrompt(seg)));
       continue;
