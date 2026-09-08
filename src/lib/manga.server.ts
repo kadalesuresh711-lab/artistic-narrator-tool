@@ -179,14 +179,18 @@ export async function buildCharacterBible(script: string): Promise<string> {
     "thin wiry build, faded grey school shirt with frayed collar, small scar above left eyebrow. " +
     "No headings, no numbering, no extra commentary.";
 
-  // Agnes 2.5 Flash reads a 512k-token context, so the ENTIRE script goes in — no sampling,
-  // no chunking. Characters introduced late are now covered like the rest.
-  const body = script.length > MAX_SCRIPT_CHARS ? script.slice(0, MAX_SCRIPT_CHARS) : script;
+  // A server function cannot pass Agnes' streamed bytes through to the browser;
+  // the published request therefore looks idle until the whole answer is ready.
+  // Keep the call bounded, while sampling the whole story so characters first
+  // introduced late are still represented.
+  const body = representativeScript(script, BIBLE_INPUT_CHARS);
 
   try {
     const out = await textChat(system, `FULL SCRIPT:\n${body}`, {
       temperature: 0.4,
-      maxOutputTokens: 4_000,
+      maxOutputTokens: 2_000,
+      timeoutMs: 75_000,
+      attempts: 2,
     });
     const bible = stripFences(out).slice(0, 4000);
     if (bible.length > 20) return bible;
@@ -269,8 +273,21 @@ const PROMPT_SYSTEM =
   "37) In the sunlit courtyard, Henan, a male 17-year-old boy ...\n38) Close-up of ...\n" +
   "No JSON, no quotes, no brackets, no bullets, no headings, no blank lines, and never break one prompt across lines.";
 
-/** Hard ceiling on how much script text is pasted into one request. */
-const MAX_SCRIPT_CHARS = 2_000_000;
+/** Hard ceiling for one published text request; larger payloads can sit idle at the edge. */
+const MAX_SCRIPT_CHARS = 72_000;
+const BIBLE_INPUT_CHARS = 48_000;
+
+/** Samples opening, middle and ending without cutting the request at only the opening. */
+function representativeScript(script: string, limit: number): string {
+  if (script.length <= limit) return script;
+  const slices = 4;
+  const width = Math.floor(limit / slices);
+  const maxStart = script.length - width;
+  return Array.from({ length: slices }, (_, i) => {
+    const start = Math.floor((maxStart * i) / (slices - 1));
+    return `[SCRIPT EXCERPT ${i + 1}/${slices}]\n${script.slice(start, start + width)}`;
+  }).join("\n\n…\n\n");
+}
 
 /**
  * How much of the script is pasted in for continuity on one prompt-writing
@@ -280,7 +297,7 @@ const MAX_SCRIPT_CHARS = 2_000_000;
  * script still goes in; above it, the request carries the story opening plus a
  * generous window around the lines being drawn.
  */
-const CONTEXT_CHARS = 2_000_000;
+const CONTEXT_CHARS = 72_000;
 /** Lines of story kept before/after the batch when the script is long. */
 const CONTEXT_BEFORE = 400;
 const CONTEXT_AFTER = 200;
@@ -354,7 +371,9 @@ export async function writePrompts(
         `then the prompt on that same single line. Nothing else.`,
       {
         temperature: temp,
-        maxOutputTokens: Math.min(240_000, 4_000 + want.length * 220),
+        maxOutputTokens: Math.min(4_000, 500 + want.length * 140),
+        timeoutMs: 75_000,
+        attempts: 2,
       },
     );
   };

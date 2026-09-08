@@ -66,3 +66,5 @@
 - [x] Fallback ladder removed: a failed panel is retried with the FULL prompt on a
       fresh seed/key; the prompt is only softened (never shortened, never a stub)
       and only when the renderer refuses the content
+- [x] Published large-script reliability: bound script context and prompt ranges so
+      reading/writing calls finish before an idle edge request can be cut off
