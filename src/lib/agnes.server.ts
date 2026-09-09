@@ -91,6 +91,11 @@ async function callAgnes(user: string, opts: ChatOptions): Promise<string> {
           ],
           temperature: opts.temperature ?? 0.7,
           max_tokens: Math.min(MAX_OUT, opts.maxOutputTokens ?? 16_000),
+          // The model is a reasoning model by default: its hidden thinking eats
+          // the whole answer budget and the reply comes back EMPTY, which used
+          // to look like the app hanging on "reading script". Thinking off.
+          reasoning_effort: "none",
+
           // STREAMING IS REQUIRED for long answers: a buffered request that
           // sends no bytes for ~2 minutes is severed by the hosting platform.
           stream: true,
