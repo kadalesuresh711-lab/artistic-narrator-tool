@@ -25,14 +25,50 @@ function apiKey(): string {
 
 /** Largest answer to ask for. */
 const MAX_OUT = 60_000;
-/** Minimum gap between two requests (free tier ~20 RPM). */
-const MIN_GAP_MS = 3_200;
+/** Minimum gap between two request STARTS (spaces the account's rate limit). */
+const MIN_GAP_MS = 1_200;
+/** How many requests may be in flight at the same time (several visitors). */
+const MAX_IN_FLIGHT = 4;
+/** Longest a call may wait for its turn before giving up instead of hanging. */
+const MAX_QUEUE_WAIT_MS = 120_000;
 
 let lastUsed = 0;
-/** Global serialization: one request in flight at a time. */
-let chain: Promise<unknown> = Promise.resolve();
+let inFlight = 0;
+const waiting: (() => void)[] = [];
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * Takes a slot. Several visitors can be served at once (up to MAX_IN_FLIGHT);
+ * request starts are still spaced by MIN_GAP_MS so the provider's rate limit is
+ * never raced. A caller that cannot get a slot in time fails fast instead of
+ * making the page look stuck forever.
+ */
+async function acquire(): Promise<void> {
+  if (inFlight >= MAX_IN_FLIGHT) {
+    await new Promise<void>((resolve, reject) => {
+      const timer = setTimeout(() => {
+        const i = waiting.indexOf(wake);
+        if (i >= 0) waiting.splice(i, 1);
+        reject(new Error("Text engine busy: too many requests at once, please retry"));
+      }, MAX_QUEUE_WAIT_MS);
+      const wake = () => {
+        clearTimeout(timer);
+        resolve();
+      };
+      waiting.push(wake);
+    });
+  }
+  inFlight++;
+  const gap = MIN_GAP_MS - (Date.now() - lastUsed);
+  if (gap > 0) await sleep(gap);
+  lastUsed = Date.now();
+}
+
+function release(): void {
+  inFlight = Math.max(0, inFlight - 1);
+  waiting.shift()?.();
+}
 
 /** True when the provider is momentarily busy — retry the same model. */
 function busy(status: number, body: string): boolean {
@@ -55,15 +91,11 @@ export type ChatOptions = {
   attempts?: number;
 };
 
-/** One text completion, queued behind every other text call. */
+/** One text completion. Concurrent visitors are served in parallel. */
 export function agnesChat(user: string, opts: ChatOptions = {}): Promise<string> {
-  const run = chain.then(
-    () => callAgnes(user, opts),
-    () => callAgnes(user, opts),
-  );
-  chain = run.catch(() => undefined);
-  return run;
+  return callAgnes(user, opts);
 }
+
 
 async function callAgnes(user: string, opts: ChatOptions): Promise<string> {
   const attempts = opts.attempts ?? 6;
