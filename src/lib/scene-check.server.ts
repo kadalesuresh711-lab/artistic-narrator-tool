@@ -69,6 +69,21 @@ export async function verifyPromptForLine(
   const trimmed = line.trim();
   if (!trimmed) return { prompt, rewritten: false, checked: false };
 
+  // A very short line (a shout, a name, a reaction, a silent beat) has no
+  // setting of its own, so a strict per-line check has nothing to judge and
+  // used to "correct" a perfectly good continuation panel into an invented,
+  // unrelated scene. Such prompts are written with their neighbouring scene as
+  // context, so they are left exactly as written.
+  const words = trimmed.split(/\s+/).filter((w) => /[\p{L}\p{N}]/u.test(w));
+  if (
+    /^continuation of the same moment/i.test(trimmed) ||
+    words.length < 6 ||
+    trimmed.length < 28
+  ) {
+    return { prompt, rewritten: false, checked: false };
+  }
+
+
   const cacheKey = keyFor(trimmed, prompt);
   const hit = cache.get(cacheKey);
   if (hit !== undefined) {
