@@ -267,7 +267,13 @@ const PROMPT_SYSTEM =
   "crowd or force, made of unnamed people who are not the main cast.\n" +
   "- NO TEXT: never describe text, letters, words, numbers, signs, posters, banners, newspapers, book pages, screens " +
   "with writing, labels or logos. Show the OBJECT and the reaction instead, never the writing.\n" +
-  "- 55 to 80 words each — every word visual and load-bearing, no filler. English only. The image engine only reads a short prompt, so a longer one loses its ending.\n" +
+  "- SHORT / NEARLY EMPTY LINES (critical): some lines are very short — a shout, a name, one word, a reaction, or a " +
+  "silent beat with almost no words. Such a line has NO new setting of its own, so you MUST hold the SAME place, the " +
+  "SAME people and the SAME time of day as the surrounding lines, and only change the camera (a closer angle, a " +
+  "reaction close-up, a detail of the same scene) or the person's expression. NEVER invent a new location, new " +
+  "characters, a new era or an unrelated event for a short line, and never jump to a scene the script does not have. " +
+  "When such a line is marked with CONTEXT below, take its place and people from that context verbatim.\n" +
+  "- 55 to 80 words each — every word visual and load-bearing, no filler. English only. The image engine only reads a short prompt, so a longer one loses its ending.\n"
   "OUTPUT FORMAT (strict about the shape, nothing else): one plain line per requested script line, each starting with " +
   "that script line's own number, then ') ', then the whole prompt on that same single line. Example:\n" +
   "37) In the sunlit courtyard, Henan, a male 17-year-old boy ...\n38) Close-up of ...\n" +
