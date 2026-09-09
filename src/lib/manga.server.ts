@@ -360,9 +360,18 @@ export async function writePrompts(
     const listing = want
       .map((n) => {
         const s = all[n - 1] as Segment;
-        return `${n}. [${s.start}s-${s.end}s] ${s.text}`;
+        const base = `${n}. [${s.start}s-${s.end}s] ${s.text}`;
+        if (!isShortLine(s.text)) return base;
+        // A near-empty line carries no setting of its own. Hand the model the
+        // nearest substantial neighbour so the panel stays in the same scene
+        // instead of being invented from nothing.
+        const anchor = nearestSubstantialLine(all, n);
+        return anchor
+          ? `${base}\n   CONTEXT (this line is very short — keep this same place, people and time, change only the camera/expression): ${anchor}`
+          : base;
       })
       .join("\n");
+
 
     return textChat(
       PROMPT_SYSTEM,
