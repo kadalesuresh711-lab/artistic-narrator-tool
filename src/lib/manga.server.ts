@@ -313,6 +313,33 @@ function numberScript(all: Segment[]): string {
   return all.map((s, i) => `${i + 1}. [${s.start}s-${s.end}s] ${s.text}`).join("\n");
 }
 
+/**
+ * True for a line with almost nothing drawable in it: a very short shout, a
+ * name, a reaction, or a silent beat. These are the lines that used to come
+ * back as a completely unrelated scene, because the model had nothing to work
+ * from and invented one.
+ */
+export function isShortLine(text: string): boolean {
+  const t = text.trim();
+  if (/^continuation of the same moment/i.test(t)) return true;
+  const words = t.split(/\s+/).filter((w) => /[\p{L}\p{N}]/u.test(w));
+  return words.length < 6 || t.length < 28;
+}
+
+/** Nearest substantial neighbour line (previous first, then next) for anchoring. */
+function nearestSubstantialLine(all: Segment[], n: number): string | null {
+  for (let i = n - 2; i >= 0 && i >= n - 8; i--) {
+    const t = all[i]?.text?.trim();
+    if (t && !isShortLine(t)) return t.slice(0, 400);
+  }
+  for (let i = n; i < all.length && i < n + 6; i++) {
+    const t = all[i]?.text?.trim();
+    if (t && !isShortLine(t)) return t.slice(0, 400);
+  }
+  return null;
+}
+
+
 function numberRange(all: Segment[], from: number, to: number): string {
   return all
     .slice(from - 1, to)
