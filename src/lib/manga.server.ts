@@ -273,7 +273,7 @@ const PROMPT_SYSTEM =
   "reaction close-up, a detail of the same scene) or the person's expression. NEVER invent a new location, new " +
   "characters, a new era or an unrelated event for a short line, and never jump to a scene the script does not have. " +
   "When such a line is marked with CONTEXT below, take its place and people from that context verbatim.\n" +
-  "- 55 to 80 words each — every word visual and load-bearing, no filler. English only. The image engine only reads a short prompt, so a longer one loses its ending.\n"
+  "- 55 to 80 words each — every word visual and load-bearing, no filler. English only. The image engine only reads a short prompt, so a longer one loses its ending.\n" +
   "OUTPUT FORMAT (strict about the shape, nothing else): one plain line per requested script line, each starting with " +
   "that script line's own number, then ') ', then the whole prompt on that same single line. Example:\n" +
   "37) In the sunlit courtyard, Henan, a male 17-year-old boy ...\n38) Close-up of ...\n" +
