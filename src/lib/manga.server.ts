@@ -267,6 +267,12 @@ const PROMPT_SYSTEM =
   "crowd or force, made of unnamed people who are not the main cast.\n" +
   "- NO TEXT: never describe text, letters, words, numbers, signs, posters, banners, newspapers, book pages, screens " +
   "with writing, labels or logos. Show the OBJECT and the reaction instead, never the writing.\n" +
+  "- SHORT / NEARLY EMPTY LINES (critical): some lines are very short — a shout, a name, one word, a reaction, or a " +
+  "silent beat with almost no words. Such a line has NO new setting of its own, so you MUST hold the SAME place, the " +
+  "SAME people and the SAME time of day as the surrounding lines, and only change the camera (a closer angle, a " +
+  "reaction close-up, a detail of the same scene) or the person's expression. NEVER invent a new location, new " +
+  "characters, a new era or an unrelated event for a short line, and never jump to a scene the script does not have. " +
+  "When such a line is marked with CONTEXT below, take its place and people from that context verbatim.\n" +
   "- 55 to 80 words each — every word visual and load-bearing, no filler. English only. The image engine only reads a short prompt, so a longer one loses its ending.\n" +
   "OUTPUT FORMAT (strict about the shape, nothing else): one plain line per requested script line, each starting with " +
   "that script line's own number, then ') ', then the whole prompt on that same single line. Example:\n" +
@@ -306,6 +312,33 @@ const CONTEXT_AFTER = 200;
 function numberScript(all: Segment[]): string {
   return all.map((s, i) => `${i + 1}. [${s.start}s-${s.end}s] ${s.text}`).join("\n");
 }
+
+/**
+ * True for a line with almost nothing drawable in it: a very short shout, a
+ * name, a reaction, or a silent beat. These are the lines that used to come
+ * back as a completely unrelated scene, because the model had nothing to work
+ * from and invented one.
+ */
+export function isShortLine(text: string): boolean {
+  const t = text.trim();
+  if (/^continuation of the same moment/i.test(t)) return true;
+  const words = t.split(/\s+/).filter((w) => /[\p{L}\p{N}]/u.test(w));
+  return words.length < 6 || t.length < 28;
+}
+
+/** Nearest substantial neighbour line (previous first, then next) for anchoring. */
+function nearestSubstantialLine(all: Segment[], n: number): string | null {
+  for (let i = n - 2; i >= 0 && i >= n - 8; i--) {
+    const t = all[i]?.text?.trim();
+    if (t && !isShortLine(t)) return t.slice(0, 400);
+  }
+  for (let i = n; i < all.length && i < n + 6; i++) {
+    const t = all[i]?.text?.trim();
+    if (t && !isShortLine(t)) return t.slice(0, 400);
+  }
+  return null;
+}
+
 
 function numberRange(all: Segment[], from: number, to: number): string {
   return all
@@ -354,9 +387,18 @@ export async function writePrompts(
     const listing = want
       .map((n) => {
         const s = all[n - 1] as Segment;
-        return `${n}. [${s.start}s-${s.end}s] ${s.text}`;
+        const base = `${n}. [${s.start}s-${s.end}s] ${s.text}`;
+        if (!isShortLine(s.text)) return base;
+        // A near-empty line carries no setting of its own. Hand the model the
+        // nearest substantial neighbour so the panel stays in the same scene
+        // instead of being invented from nothing.
+        const anchor = nearestSubstantialLine(all, n);
+        return anchor
+          ? `${base}\n   CONTEXT (this line is very short — keep this same place, people and time, change only the camera/expression): ${anchor}`
+          : base;
       })
       .join("\n");
+
 
     return textChat(
       PROMPT_SYSTEM,
