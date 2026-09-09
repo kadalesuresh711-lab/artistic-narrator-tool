@@ -68,3 +68,6 @@
       and only when the renderer refuses the content
 - [x] Published large-script reliability: bound script context and prompt ranges so
       reading/writing calls finish before an idle edge request can be cut off
+- [x] Script reading hang fixed: the writing model's hidden "thinking" was
+      consuming the whole answer budget, returning an empty reply that the app
+      retried forever. Thinking is now switched off (reasoning_effort: none).
